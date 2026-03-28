@@ -48,6 +48,13 @@ const Home = () => {
         }
 
         const data = await generateReport(payload);
+
+        if (!data || !data._id) {
+            console.log("Report generation failed");
+            alert("Failed to generate report. Try again.");
+            return;
+        }
+
         navigate(`/interview/${data._id}`);
     };
 

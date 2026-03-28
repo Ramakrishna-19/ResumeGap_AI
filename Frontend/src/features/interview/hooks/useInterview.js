@@ -29,7 +29,8 @@ export const useInterview = () => {
 
         if (!response) 
             return null;
-        return response?.interviewReport;
+
+        return response?.interviewReport||null;
     }
 
     const getReportById = async (interviewId) => {

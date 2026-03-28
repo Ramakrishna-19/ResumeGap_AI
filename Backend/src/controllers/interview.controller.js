@@ -36,11 +36,24 @@ async function generateInterViewReportController(req, res) {
             });
         }
 
-        const interViewReportByAi = await generateInterviewReport({
-            resume: resumeText || null,
-            selfDescription: selfDescription || null,
-            jobDescription
-        });
+        let interViewReportByAi = {};
+
+        try {
+            interViewReportByAi = await generateInterviewReport({
+                resume: resumeText && resumeText.trim() !== "" ? resumeText : "No resume provided",
+                selfDescription: selfDescription && selfDescription.trim() !== "" ? selfDescription : "No self description provided",
+                jobDescription
+            });
+
+            console.log("AI RESPONSE:", interViewReportByAi);
+
+        } catch (err) {
+            console.log("AI ERROR:", err);
+
+            return res.status(500).json({
+                message: "AI service failed. Try again."
+            });
+        }
 
         const interviewReport = await interviewReportModel.create({
             user: req.user.id,
