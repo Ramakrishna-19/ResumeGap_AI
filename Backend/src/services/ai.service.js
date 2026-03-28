@@ -43,16 +43,37 @@ async function generateInterviewReport({ resume, selfDescription, jobDescription
 `
 
     const response = await ai.models.generateContent({
-        model: "gemini-1.5-pro",
-        contents: prompt,
+        model: "gemini-3-flash",
+        contents: [
+            {
+                role: "user",
+                parts: [{ text: prompt }]
+            }
+        ],
         config: {
             responseMimeType: "application/json",
             responseSchema: zodToJsonSchema(interviewReportSchema),
         }
     })
 
-    return JSON.parse(response.text)
+    console.log("AI RAW RESPONSE:", response);
+    let text = "";
 
+    try {
+        text = response?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    } catch (err) {
+        console.log("PARSE ERROR:", err);
+        console.log("FULL RESPONSE:", JSON.stringify(response, null, 2));
+        throw new Error("AI parsing failed");
+    }
+
+    if (!text) {
+        throw new Error("Empty AI response");
+    }
+
+    const cleaned = text.replace(/```json|```/g, "").trim();
+
+    return JSON.parse(cleaned);
 
 }
 
@@ -97,7 +118,7 @@ async function generateResumePdf({ resume, selfDescription, jobDescription }) {
                     `
 
     const response = await ai.models.generateContent({
-        model: "gemini-1.5-pro",
+        model: "gemini-3-flash",
         contents: [
             {
                 role: "user",
