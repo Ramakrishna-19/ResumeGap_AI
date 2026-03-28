@@ -1,66 +1,55 @@
-import { useContext, useEffect } from "react";
+import { useContext } from "react";
 import { AuthContext } from "../auth.context";
-import { login, register, logout, getMe } from "../services/auth.api";
-
-
+import { login, register, logout } from "../services/auth.api";
 
 export const useAuth = () => {
 
-    const context = useContext(AuthContext)
-    const { user, setUser, loading, setLoading } = context
+    const { user, setUser, loading, setLoading } = useContext(AuthContext);
 
-
+    // ✅ LOGIN
     const handleLogin = async ({ email, password }) => {
-        setLoading(true)
+        setLoading(true);
         try {
-            const data = await login({ email, password })
-            setUser(data.user)
+            const data = await login({ email, password });
+            setUser(data.user);
         } catch (err) {
-
+            console.log("Login error:", err);
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
-    }
+    };
 
+    // ✅ REGISTER
     const handleRegister = async ({ username, email, password }) => {
-        setLoading(true)
+        setLoading(true);
         try {
-            const data = await register({ username, email, password })
-            setUser(data.user)
+            const data = await register({ username, email, password });
+            setUser(data.user);
         } catch (err) {
-
+            console.log("Register error:", err);
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
-    }
+    };
 
+    // ✅ LOGOUT
     const handleLogout = async () => {
-        setLoading(true)
+        setLoading(true);
         try {
-            const data = await logout()
-            setUser(null)
+            await logout();
+            setUser(null);
         } catch (err) {
-
+            console.log("Logout error:", err);
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
-    }
+    };
 
-    useEffect(() => {
-
-        const getAndSetUser = async () => {
-            try {
-
-                const data = await getMe()
-                setUser(data.user)
-            } catch (err) { } finally {
-                setLoading(false)
-            }
-        }
-
-        getAndSetUser()
-
-    }, [])
-
-    return { user, loading, handleRegister, handleLogin, handleLogout }
-}
+    return {
+        user,
+        loading,
+        handleLogin,
+        handleRegister,
+        logout: handleLogout
+    };
+};

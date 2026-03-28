@@ -1,22 +1,65 @@
-import React, { useState, useRef } from 'react'
-import "../style/home.scss"
+import React, { useState, useRef, useEffect } from 'react'
+import "../style/home.css"
 import { useInterview } from '../hooks/useInterview.js'
 import { useNavigate } from 'react-router'
+import { useAuth } from "../../auth/hooks/useAuth";
+import { deleteInterview } from "../services/interview.api";
 
 const Home = () => {
 
-    const { loading, generateReport,reports } = useInterview()
+    const { loading, generateReport, reports, setReports } = useInterview()
     const [ jobDescription, setJobDescription ] = useState("")
     const [ selfDescription, setSelfDescription ] = useState("")
+    const [uploadedFile, setUploadedFile] = useState(null);
+    const [openMenu, setOpenMenu] = useState(null);
     const resumeInputRef = useRef()
 
     const navigate = useNavigate()
 
+    const { user, logout } = useAuth();
+
+    useEffect(() => {
+        const closeMenu = () => setOpenMenu(null);
+        window.addEventListener("click", closeMenu);
+
+        return () => window.removeEventListener("click", closeMenu);
+    }, []);
+
     const handleGenerateReport = async () => {
-        const resumeFile = resumeInputRef.current.files[ 0 ]
-        const data = await generateReport({ jobDescription, selfDescription, resumeFile })
-        navigate(`/interview/${data._id}`)
-    }
+
+        const resumeFile = resumeInputRef.current.files[0];
+
+        // validation
+        if (!resumeFile && !selfDescription) {
+            alert("Please upload a resume OR enter self description");
+            return;
+        }
+
+        const payload = {
+            jobDescription,
+        };
+
+        if (resumeFile) {
+            payload.resumeFile = resumeFile;
+        }
+
+        if (selfDescription) {
+            payload.selfDescription = selfDescription;
+        }
+
+        const data = await generateReport(payload);
+        navigate(`/interview/${data._id}`);
+    };
+
+    const handleDelete = async (id) => {
+        try {
+            await deleteInterview(id); 
+            setReports(prev => prev.filter(r => r._id !== id));
+            setOpenMenu(null);
+        } catch (err) {
+            console.log(err);
+        }
+    };
 
     if (loading) {
         return (
@@ -28,7 +71,7 @@ const Home = () => {
 
     return (
         <div className='home-page'>
-
+            
             {/* Page Header */}
             <header className='page-header'>
                 <h1>Create Your Custom <span className='highlight'>Interview Plan</span></h1>
@@ -66,7 +109,7 @@ const Home = () => {
                             <span className='panel__icon'>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
                             </span>
-                            <h2>Your Profile</h2>
+                            <h2 onClick={() => navigate("/profile")}>Your Profile</h2>
                         </div>
 
                         {/* Upload Resume */}
@@ -75,13 +118,40 @@ const Home = () => {
                                 Upload Resume
                                 <span className='badge badge--best'>Best Results</span>
                             </label>
-                            <label className='dropzone' htmlFor='resume'>
-                                <span className='dropzone__icon'>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 16 12 12 8 16" /><line x1="12" y1="12" x2="12" y2="21" /><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" /></svg>
-                                </span>
-                                <p className='dropzone__title'>Click to upload or drag &amp; drop</p>
-                                <p className='dropzone__subtitle'>PDF or DOCX (Max 5MB)</p>
-                                <input ref={resumeInputRef} hidden type='file' id='resume' name='resume' accept='.pdf,.docx' />
+                            <label 
+                                className={`dropzone ${uploadedFile ? "dropzone--success" : ""}`} 
+                                htmlFor='resume'
+                            >
+                                {uploadedFile ? (
+                                    <>
+                                        <span className='dropzone__icon'>📄</span>
+                                        <p className='dropzone__title'>File Uploaded</p>
+                                        <p className='dropzone__subtitle'>{uploadedFile.name}</p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className='dropzone__icon'>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <polyline points="16 16 12 12 8 16" />
+                                                <line x1="12" y1="12" x2="12" y2="21" />
+                                                <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
+                                            </svg>
+                                        </span>
+                                        <p className='dropzone__title'>Click to upload or drag & drop</p>
+                                        <p className='dropzone__subtitle'>PDF or DOCX (Max 5MB)</p>
+                                    </>
+                                )}
+
+                                <input 
+                                    ref={resumeInputRef}
+                                    hidden
+                                    type='file'
+                                    id='resume'
+                                    name='resume'
+                                    accept='.pdf,.docx'
+                                    onChange={(e) => setUploadedFile(e.target.files[0])}
+                                />
+
                             </label>
                         </div>
 
@@ -128,18 +198,66 @@ const Home = () => {
                     <h2>My Recent Interview Plans</h2>
                     <ul className='reports-list'>
                         {reports.map(report => (
-                            <li key={report._id} className='report-item' onClick={() => navigate(`/interview/${report._id}`)}>
-                                <h3>{report.title || 'Untitled Position'}</h3>
-                                <p className='report-meta'>Generated on {new Date(report.createdAt).toLocaleDateString()}</p>
-                                <p className={`match-score ${report.matchScore >= 80 ? 'score--high' : report.matchScore >= 60 ? 'score--mid' : 'score--low'}`}>Match Score: {report.matchScore}%</p>
+                            <li key={report._id} className='report-item'>
+
+                                <div className="report-header">
+
+                                    <h3 onClick={() => navigate(`/interview/${report._id}`)}>
+                                        {report.title || 'Untitled Position'}
+                                    </h3>
+
+                                    <div className="menu-container">
+
+                                        <span 
+                                            className="menu-dots"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setOpenMenu(openMenu === report._id ? null : report._id);
+                                            }}
+                                        >
+                                            ⋮
+                                        </span>
+
+                                        {openMenu === report._id && (
+                                            <div className="menu-dropdown">
+                                                <p onClick={() => handleDelete(report._id)}>Delete</p>
+                                            </div>
+                                        )}
+
+                                    </div>
+
+                                </div>
+
+                                <p className='report-meta'>
+                                    Generated on {new Date(report.createdAt).toLocaleDateString()}
+                                </p>
+
+                                <p className={`match-score ${
+                                    report.matchScore >= 80 ? 'score--high' : 
+                                    report.matchScore >= 60 ? 'score--mid' : 
+                                    'score--low'
+                                }`}>
+                                    Match Score: {report.matchScore}%
+                                </p>
+
                             </li>
                         ))}
                     </ul>
                 </section>
             )}
 
+
+            
+
             {/* Page Footer */}
             <footer className='page-footer'>
+                <a 
+                    href='https://www.instagram.com/probably_krishna/' 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                >
+                    Get in Touch
+                </a>
                 <a href='#'>Privacy Policy</a>
                 <a href='#'>Terms of Service</a>
                 <a href='#'>Help Center</a>

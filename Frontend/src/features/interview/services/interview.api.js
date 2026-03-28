@@ -11,20 +11,22 @@ const api = axios.create({
  */
 export const generateInterviewReport = async ({ jobDescription, selfDescription, resumeFile }) => {
 
-    const formData = new FormData()
-    formData.append("jobDescription", jobDescription)
-    formData.append("selfDescription", selfDescription)
-    formData.append("resume", resumeFile)
+    const formData = new FormData();
 
-    const response = await api.post("/api/interview/", formData, {
-        headers: {
-            "Content-Type": "multipart/form-data"
-        }
-    })
+    formData.append("jobDescription", jobDescription);
 
-    return response.data
+    if (selfDescription && selfDescription.trim() !== "") {
+        formData.append("selfDescription", selfDescription);
+    }
 
-}
+    if (resumeFile) {
+        formData.append("resume", resumeFile);
+    }
+
+    const response = await api.post("/api/interview/", formData);
+
+    return response.data;
+};
 
 
 /**
@@ -57,3 +59,12 @@ export const generateResumePdf = async ({ interviewReportId }) => {
 
     return response.data
 }
+
+export const deleteInterview = async (id) => {
+    try {
+        const res = await api.delete(`/api/interview/${id}`);
+        return res.data;
+    } catch (err) {
+        console.log(err);
+    }
+};

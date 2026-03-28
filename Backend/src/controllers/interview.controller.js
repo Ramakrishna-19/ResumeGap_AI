@@ -10,28 +10,58 @@ const interviewReportModel = require("../models/interviewReport.model")
  */
 async function generateInterViewReportController(req, res) {
 
-    const resumeContent = await (new pdfParse.PDFParse(Uint8Array.from(req.file.buffer))).getText()
-    const { selfDescription, jobDescription } = req.body
+    try {
+        const { selfDescription, jobDescription } = req.body;
 
-    const interViewReportByAi = await generateInterviewReport({
-        resume: resumeContent.text,
-        selfDescription,
-        jobDescription
-    })
+        let resumeText = "";
 
-    const interviewReport = await interviewReportModel.create({
-        user: req.user.id,
-        resume: resumeContent.text,
-        selfDescription,
-        jobDescription,
-        ...interViewReportByAi
-    })
+        if (req.file) {
+            try {
+                const resumeContent = await (new pdfParse.PDFParse(
+                    Uint8Array.from(req.file.buffer)
+                )).getText();
 
-    res.status(201).json({
-        message: "Interview report generated successfully.",
-        interviewReport
-    })
+                resumeText = resumeContent.text || "";
+            } catch (err) {
+                console.log("PDF ERROR:", err);
+                return res.status(400).json({
+                    message: "Error reading resume file"
+                });
+            }
+        }
 
+        // Validation
+        if ((!resumeText || resumeText.trim() === "") && (!selfDescription || selfDescription.trim() === "")) {
+            return res.status(400).json({
+                message: "Provide either resume or self description"
+            });
+        }
+
+        const interViewReportByAi = await generateInterviewReport({
+            resume: resumeText || null,
+            selfDescription: selfDescription || null,
+            jobDescription
+        });
+
+        const interviewReport = await interviewReportModel.create({
+            user: req.user.id,
+            resume: resumeText,
+            selfDescription,
+            jobDescription,
+            ...interViewReportByAi
+        });
+
+        res.status(201).json({
+            message: "Interview report generated successfully.",
+            interviewReport
+        });
+
+    } catch (error) {
+        console.log("ERROR:", error);
+        res.status(500).json({
+            message: "Internal server error"
+        });
+    }
 }
 
 /**
@@ -95,4 +125,25 @@ async function generateResumePdfController(req, res) {
     res.send(pdfBuffer)
 }
 
-module.exports = { generateInterViewReportController, getInterviewReportByIdController, getAllInterviewReportsController, generateResumePdfController }
+async function deleteInterviewController(req, res) {
+    try {
+        const { id } = req.params;
+
+        await interviewReportModel.deleteOne({
+            _id: id,
+            user: req.user.id
+        });
+
+        res.status(200).json({
+            message: "Interview deleted successfully"
+        });
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            message: "Error deleting interview"
+        });
+    }
+}
+
+module.exports = { generateInterViewReportController, getInterviewReportByIdController, getAllInterviewReportsController, generateResumePdfController, deleteInterviewController}
