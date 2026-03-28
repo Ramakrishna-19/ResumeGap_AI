@@ -35,35 +35,33 @@ const interviewReportSchema = z.object({
 
 async function generateInterviewReport({ resume, selfDescription, jobDescription }) {
 
+    const prompt = `Generate an interview report:
 
-    const prompt = `Generate an interview report for a candidate with the following details:
-                        Resume: ${resume}
-                        Self Description: ${selfDescription}
-                        Job Description: ${jobDescription}
-`
+    Resume: ${resume}
+    Self Description: ${selfDescription}
+    Job Description: ${jobDescription}
+
+    Return ONLY valid JSON.
+    `;
 
     const response = await ai.models.generateContent({
-        model: "gemini-3-flash",
+        model: "gemini-2.0-flash",
         contents: [
             {
                 role: "user",
                 parts: [{ text: prompt }]
             }
-        ],
-        config: {
-            responseMimeType: "application/json",
-            responseSchema: zodToJsonSchema(interviewReportSchema),
-        }
-    })
+        ]
+    });
 
-    console.log("AI RAW RESPONSE:", response);
+    console.log("AI RAW:", JSON.stringify(response, null, 2));
+
     let text = "";
 
     try {
         text = response?.candidates?.[0]?.content?.parts?.[0]?.text || "";
     } catch (err) {
         console.log("PARSE ERROR:", err);
-        console.log("FULL RESPONSE:", JSON.stringify(response, null, 2));
         throw new Error("AI parsing failed");
     }
 
@@ -74,9 +72,7 @@ async function generateInterviewReport({ resume, selfDescription, jobDescription
     const cleaned = text.replace(/```json|```/g, "").trim();
 
     return JSON.parse(cleaned);
-
 }
-
 
 
 async function generatePdfFromHtml(htmlContent) {
@@ -118,7 +114,7 @@ async function generateResumePdf({ resume, selfDescription, jobDescription }) {
                     `
 
     const response = await ai.models.generateContent({
-        model: "gemini-3-flash",
+        model: "gemini-2.0-flash",
         contents: [
             {
                 role: "user",
