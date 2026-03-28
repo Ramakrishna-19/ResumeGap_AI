@@ -54,15 +54,9 @@ async function generateInterViewReportController(req, res) {
         } catch (err) {
             console.log("AI ERROR:", err.message);
 
-            interViewReportByAi = {
-                title: "Basic Interview Plan",
-                matchScore: 50,
-                feedback: "AI is currently busy. Please try again later.",
-                technicalQuestions: [],
-                behavioralQuestions: [],
-                skillGaps: [],
-                preparationPlan: []
-            };
+            return res.status(500).json({
+                message: "AI service is temporarily unavailable. Please try again."
+            });
         }
 
         const interviewReport = await interviewReportModel.create({
