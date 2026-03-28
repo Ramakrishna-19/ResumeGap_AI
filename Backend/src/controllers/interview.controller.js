@@ -11,17 +11,18 @@ const interviewReportModel = require("../models/interviewReport.model")
 async function generateInterViewReportController(req, res) {
 
     try {
+
+        console.log("FILE:", req.file);
+        console.log("BODY:", req.body);
+
         const { selfDescription, jobDescription } = req.body;
 
         let resumeText = "";
 
-        if (req.file) {
+        if (req.file && req.file.buffer) {
             try {
-                const resumeContent = await (new pdfParse.PDFParse(
-                    Uint8Array.from(req.file.buffer)
-                )).getText();
-
-                resumeText = resumeContent.text || "";
+                const data = await pdfParse(req.file.buffer);  
+                resumeText = data.text || "";
             } catch (err) {
                 console.log("PDF ERROR:", err);
                 return res.status(400).json({

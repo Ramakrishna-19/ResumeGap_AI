@@ -19,7 +19,7 @@ export const generateInterviewReport = async ({ jobDescription, selfDescription,
         formData.append("selfDescription", selfDescription);
     }
 
-    if (resumeFile) {
+    if(resumeFile) {
         formData.append("resume", resumeFile);
     }
 
