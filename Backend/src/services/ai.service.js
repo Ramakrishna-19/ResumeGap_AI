@@ -31,7 +31,9 @@ const interviewReportSchema = z.object({
 
 async function generateInterviewReport({ resume, selfDescription, jobDescription }) {
     console.log("KEY:", process.env.OPENROUTER_API_KEY);
-    
+    console.log("ENV KEYS:", object.keys(process.env));
+    console.log("OPENROUTER:", process.env.OPENROUTER_API_KEY);
+
     const prompt = `
 Generate a professional interview report in STRICT JSON format.
 
