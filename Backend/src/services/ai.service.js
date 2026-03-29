@@ -6,35 +6,40 @@ const chromium = require("@sparticuz/chromium");
 async function generateInterviewReport({ resume, selfDescription, jobDescription }) {
 
     const prompt = `
-You are an expert technical interviewer.
+        You are an expert technical interviewer.
 
-Generate a high-quality interview report.
+        Generate a high-quality interview report.
 
-rules:
-- output only json
-- matchScore must be integer (0–100)
-- each field must follow correct structure
-- do not repeat questions
+        rules:
+        - output only json
+        - matchScore must be integer (0–100)
+        - each field must follow correct structure
+        - do not repeat questions
+        - you must compare resume, self description, and job description (if provided)
+        - if job description is not provided, evaluate candidate based on resume and self description only
+        - identify missing skills by comparing candidate profile with job requirements (if available)
+        - if job description is unrelated to candidate profile, matchScore must be LOW (below 40)
+        - if many important skills are missing, matchScore must decrease accordingly
 
-resume:
-${resume || "Not provided"}
+        resume:
+        ${resume || "Not provided"}
 
-self description:
-${selfDescription || "Not provided"}
+        self description:
+        ${selfDescription || "Not provided"}
 
-job description:
-${jobDescription}
+        job description:
+        ${jobDescription || "Not provided"}
 
-return json:
-{
-  "title": "string",
-  "matchScore": number,
-  "technicalQuestions": [],
-  "behavioralQuestions": [],
-  "skillGaps": [],
-  "preparationPlan": []
-}
-`;
+        return json:
+        {
+        "title": "string",
+        "matchScore": number,
+        "technicalQuestions": [],
+        "behavioralQuestions": [],
+        "skillGaps": [],
+        "preparationPlan": []
+        }
+        `;
 
     const response = await axios.post(
         "https://openrouter.ai/api/v1/chat/completions",
