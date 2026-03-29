@@ -2,7 +2,7 @@ const axios = require("axios");
 const puppeteer = require("puppeteer-core");
 const chromium = require("@sparticuz/chromium");
 
-// generate interview report
+// generating interview report
 async function generateInterviewReport({ resume, selfDescription, jobDescription }) {
 
     const prompt = `
@@ -16,7 +16,6 @@ rules:
 - each technical question must include: question, intention, answer
 - each behavioral question must include: question, intention, answer
 - do not repeat questions
-- generate at least 10 technical and 6 behavioral questions
 
 resume:
 ${resume || "Not provided"}
@@ -60,47 +59,40 @@ return json:
     try {
         result = JSON.parse(cleaned);
     } catch (err) {
-        console.log("json error:", cleaned);
-        throw new Error("invalid ai response");
+        console.log("raw ai response:", cleaned);
+
+        // try extracting json if wrapped in extra text
+        const match = cleaned.match(/\{[\s\S]*\}/);
+        if (match) {
+            result = JSON.parse(match[0]);
+        } else {
+            throw new Error("invalid ai response");
+        }
     }
 
     result.matchScore = result.matchScore <= 1
         ? Math.round(result.matchScore * 100)
         : Math.round(result.matchScore);
 
-    const normalizeQuestion = (q, type) => {
-        if (typeof q === "string") {
-            return {
-                question: q,
-                intention: type === "tech"
-                    ? "evaluate technical understanding"
-                    : "evaluate behavior and communication",
-                answer: type === "tech"
-                    ? "explain with examples"
-                    : "use star method"
-            };
-        }
-
-        return {
-            question: q.question || "explain a concept",
-            intention: q.intention || (
-                type === "tech"
-                    ? "evaluate technical understanding"
-                    : "evaluate behavior and communication"
-            ),
-            answer: q.answer || (
-                type === "tech"
-                    ? "explain with examples"
-                    : "use star method"
-            )
-        };
-    };
+    const normalize = (q, type) => ({
+        question: q?.question || (typeof q === "string" ? q : "explain a concept"),
+        intention: q?.intention || (
+            type === "tech"
+                ? "evaluate technical understanding"
+                : "evaluate behavior"
+        ),
+        answer: q?.answer || (
+            type === "tech"
+                ? "explain with examples"
+                : "use star method"
+        )
+    });
 
     result.technicalQuestions = (result.technicalQuestions || [])
-        .map(q => normalizeQuestion(q, "tech"));
+        .map(q => normalize(q, "tech"));
 
     result.behavioralQuestions = (result.behavioralQuestions || [])
-        .map(q => normalizeQuestion(q, "behav"));
+        .map(q => normalize(q, "behav"));
 
     const removeDuplicates = (arr) => {
         const seen = new Set();
@@ -114,32 +106,6 @@ return json:
 
     result.technicalQuestions = removeDuplicates(result.technicalQuestions);
     result.behavioralQuestions = removeDuplicates(result.behavioralQuestions);
-
-    const expandQuestions = (arr, minCount) => {
-        let i = 0;
-
-        while (arr.length < minCount && arr.length > 0) {
-            const base = arr[i % arr.length];
-
-            const newQuestion = {
-                question: base.question + " (variation)",
-                intention: base.intention,
-                answer: base.answer
-            };
-
-            if (!arr.some(q => q.question === newQuestion.question)) {
-                arr.push(newQuestion);
-            }
-
-            i++;
-            if (i > 20) break;
-        }
-
-        return arr;
-    };
-
-    result.technicalQuestions = expandQuestions(result.technicalQuestions, 10);
-    result.behavioralQuestions = expandQuestions(result.behavioralQuestions, 6);
 
     return result;
 }
@@ -169,7 +135,7 @@ async function generatePdfFromHtml(htmlContent) {
     return pdfBuffer;
 }
 
-// resume pdf
+// generating resume
 async function generateResumePdf({ resume, selfDescription, jobDescription }) {
 
     const prompt = `
@@ -220,6 +186,7 @@ return:
         const jsonContent = JSON.parse(cleaned);
         htmlContent = jsonContent.html;
     } catch (err) {
+        console.log("raw resume response:", cleaned);
         htmlContent = cleaned;
     }
 
