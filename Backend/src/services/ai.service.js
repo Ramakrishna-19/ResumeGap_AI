@@ -13,7 +13,7 @@ Generate a HIGH-QUALITY interview report.
 ⚠️ RULES:
 - Output ONLY JSON
 - matchScore must be INTEGER (0–100)
-- Generate detailed structured questions
+- Include detailed structured questions
 
 Resume:
 ${resume || "Not provided"}
@@ -67,8 +67,7 @@ Return JSON format:
         result.matchScore = Math.round(result.matchScore);
     }
 
-
-    // Technical Questions
+    // Technical Questions 
     result.technicalQuestions = (result.technicalQuestions || []).map(q => {
         if (typeof q === "string") {
             return {
@@ -77,7 +76,12 @@ Return JSON format:
                 answer: "Explain clearly with examples"
             };
         }
-        return q;
+
+        return {
+            question: q.question || "Explain a technical concept",
+            intention: q.intention || "To evaluate technical understanding",
+            answer: q.answer || "Explain clearly with examples"
+        };
     });
 
     // Behavioral Questions
@@ -89,7 +93,12 @@ Return JSON format:
                 answer: "Use STAR method"
             };
         }
-        return q;
+
+        return {
+            question: q.question || "Describe a real-life situation",
+            intention: q.intention || "To evaluate communication and problem-solving",
+            answer: q.answer || "Use STAR method"
+        };
     });
 
     // Skill Gaps
@@ -100,7 +109,11 @@ Return JSON format:
                 severity: "medium"
             };
         }
-        return s;
+
+        return {
+            skill: s.skill || "General Skill",
+            severity: s.severity || "medium"
+        };
     });
 
     // Preparation Plan
@@ -112,7 +125,12 @@ Return JSON format:
                 tasks: [p]
             };
         }
-        return p;
+
+        return {
+            day: p.day || i + 1,
+            focus: p.focus || "General Preparation",
+            tasks: p.tasks && p.tasks.length > 0 ? p.tasks : ["Practice concepts"]
+        };
     });
 
     // fixing questions count
@@ -136,7 +154,7 @@ Return JSON format:
     return result;
 }
 
-// PDF Generation
+// pdf generation
 
 async function generatePdfFromHtml(htmlContent) {
     const browser = await puppeteer.launch({
@@ -162,7 +180,7 @@ async function generatePdfFromHtml(htmlContent) {
     return pdfBuffer;
 }
 
-// RESUME Generation
+//Resume generation
 
 async function generateResumePdf({ resume, selfDescription, jobDescription }) {
 
@@ -215,7 +233,7 @@ Return:
         htmlContent = jsonContent.html;
     } catch (err) {
         console.log("JSON ERROR:", cleaned);
-        htmlContent = cleaned; 
+        htmlContent = cleaned;
     }
 
     if (!htmlContent || htmlContent.length < 50) {
