@@ -78,6 +78,15 @@ async function generateInterviewReport({ resume, selfDescription, jobDescription
         }
     }
 
+    if (!result.title || result.title.trim() === "") {
+        if (jobDescription && jobDescription !== "Not provided") {
+            const firstLine = jobDescription.split("\n")[0];
+            result.title = firstLine.trim() || "Generated Interview Report";
+        } else {
+            result.title = "Generated Interview Report";
+        }
+    }
+
     if (typeof result.matchScore === "number") {
         result.matchScore = result.matchScore <= 1
             ? Math.round(result.matchScore * 100)
@@ -179,6 +188,8 @@ async function generateInterviewReport({ resume, selfDescription, jobDescription
     score = Math.max(score, 10);
 
     result.matchScore = score;
+
+    return result;
 }
 
 // pdf generation
