@@ -2,7 +2,7 @@ const axios = require("axios");
 const puppeteer = require("puppeteer-core");
 const chromium = require("@sparticuz/chromium");
 
-// generating interview report
+// generate interview report
 async function generateInterviewReport({ resume, selfDescription, jobDescription }) {
 
     const prompt = `
@@ -13,8 +13,7 @@ Generate a high-quality interview report.
 rules:
 - output only json
 - matchScore must be integer (0–100)
-- each technical question must include: question, intention, answer
-- each behavioral question must include: question, intention, answer
+- each field must follow correct structure
 - do not repeat questions
 
 resume:
@@ -60,8 +59,6 @@ return json:
         result = JSON.parse(cleaned);
     } catch (err) {
         console.log("raw ai response:", cleaned);
-
-        // try extracting json if wrapped in extra text
         const match = cleaned.match(/\{[\s\S]*\}/);
         if (match) {
             result = JSON.parse(match[0]);
@@ -70,10 +67,12 @@ return json:
         }
     }
 
+    // fix matchScore
     result.matchScore = result.matchScore <= 1
         ? Math.round(result.matchScore * 100)
         : Math.round(result.matchScore);
 
+    // normalize questions
     const normalize = (q, type) => ({
         question: q?.question || (typeof q === "string" ? q : "explain a concept"),
         intention: q?.intention || (
@@ -94,6 +93,7 @@ return json:
     result.behavioralQuestions = (result.behavioralQuestions || [])
         .map(q => normalize(q, "behav"));
 
+    // remove duplicates
     const removeDuplicates = (arr) => {
         const seen = new Set();
         return arr.filter(q => {
@@ -107,10 +107,44 @@ return json:
     result.technicalQuestions = removeDuplicates(result.technicalQuestions);
     result.behavioralQuestions = removeDuplicates(result.behavioralQuestions);
 
+    // ================= FIX SKILL GAPS =================
+    result.skillGaps = (result.skillGaps || []).map(s => {
+        if (typeof s === "string") {
+            return {
+                skill: s,
+                severity: "medium"
+            };
+        }
+
+        return {
+            skill: s.skill || "general skill",
+            severity: s.severity || "medium"
+        };
+    });
+
+    // ================= FIX PREPARATION PLAN =================
+    result.preparationPlan = (result.preparationPlan || []).map((p, i) => {
+        if (typeof p === "string") {
+            return {
+                day: i + 1,
+                focus: "general preparation",
+                tasks: [p]
+            };
+        }
+
+        return {
+            day: p.day || i + 1,
+            focus: p.focus || "general preparation",
+            tasks: Array.isArray(p.tasks) && p.tasks.length > 0
+                ? p.tasks
+                : ["practice fundamentals"]
+        };
+    });
+
     return result;
 }
 
-// generating pdf from html
+// pdf generation
 async function generatePdfFromHtml(htmlContent) {
     const browser = await puppeteer.launch({
         args: chromium.args,
@@ -135,7 +169,7 @@ async function generatePdfFromHtml(htmlContent) {
     return pdfBuffer;
 }
 
-// generating resume
+// resume generation
 async function generateResumePdf({ resume, selfDescription, jobDescription }) {
 
     const prompt = `
@@ -146,7 +180,6 @@ generate ats-friendly resume in html.
 rules:
 - output only json
 - must contain "html"
-- html must be complete
 
 resume:
 ${resume || "Not provided"}
@@ -186,7 +219,6 @@ return:
         const jsonContent = JSON.parse(cleaned);
         htmlContent = jsonContent.html;
     } catch (err) {
-        console.log("raw resume response:", cleaned);
         htmlContent = cleaned;
     }
 
