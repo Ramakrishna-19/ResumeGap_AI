@@ -112,25 +112,97 @@ Return ONLY JSON with:
 }
 
 
-async function generatePdfFromHtml(htmlContent) {
-    const browser = await puppeteer.launch({
-        args: ["--no-sandbox", "--disable-setuid-sandbox"]
-    }); 
-    const page = await browser.newPage();
-    await page.setContent(htmlContent, { waitUntil: "networkidle0" })
+async function generateResumePdf({ resume, selfDescription, jobDescription }) {
 
-    const pdfBuffer = await page.pdf({
-        format: "A4", margin: {
-            top: "20mm",
-            bottom: "20mm",
-            left: "15mm",
-            right: "15mm"
+    const prompt = `
+        You are a professional resume writer.
+
+        Generate a HIGH-QUALITY ATS-friendly resume in clean HTML format.
+
+        ⚠️ STRICT RULES:
+        - Output ONLY JSON (no explanation)
+        - JSON must contain ONLY one field: "html"
+        - HTML must be COMPLETE (with <!DOCTYPE html>, <html>, <head>, <body>)
+        - Use simple inline CSS (no external links)
+        - Keep design clean, minimal, and professional
+        - Ensure it converts properly to PDF
+
+        -------------------------
+
+        Resume:
+        ${resume || "Not provided"}
+
+        Self Description:
+        ${selfDescription || "Not provided"}
+
+        Job Description:
+        ${jobDescription}
+
+        -------------------------
+
+        RESUME REQUIREMENTS:
+        - Include sections:
+        1. Name & Contact Information
+        2. Professional Summary
+        3. Skills
+        4. Projects
+        5. Experience (if available)
+        6. Education
+        - Use bullet points for readability
+        - Highlight relevant skills based on job description
+        - Keep it 1–2 pages length
+        - Make it look like a real human-written resume (NOT AI-like)
+        - Keep formatting aligned and clean
+
+        -------------------------
+
+        Return JSON:
+
+        {
+        "html": "<!DOCTYPE html>...complete HTML resume..."
         }
-    })
+        `;
 
-    await browser.close()
+    const response = await axios.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        {
+            model: "openai/gpt-3.5-turbo",
+            messages: [
+                {
+                    role: "user",
+                    content: prompt
+                }
+            ]
+        },
+        {
+            headers: {
+                Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+                "Content-Type": "application/json"
+            }
+        }
+    );
 
-    return pdfBuffer
+    const text = response.data.choices[0].message.content;
+
+    const cleaned = text.replace(/```json|```/g, "").trim();
+
+    let htmlContent = "";
+
+    try {
+        const jsonContent = JSON.parse(cleaned);
+        htmlContent = jsonContent.html;
+    } catch (err) {
+        console.log("RESUME JSON ERROR:", cleaned);
+        throw new Error("Invalid resume AI response");
+    }
+
+    if (!htmlContent || !htmlContent.includes("<html")) {
+        throw new Error("Invalid HTML content generated");
+    }
+
+    const pdfBuffer = await generatePdfFromHtml(htmlContent);
+
+    return pdfBuffer;
 }
 
 /*
