@@ -218,9 +218,7 @@ async function generatePdfFromHtml(htmlContent) {
 }
 
 // resume generation 
-async function generateResumePdf({ resume, selfDescription, jobDescription }) {
-
-    const prompt = `
+const prompt = `
 You are a professional resume writer.
 
 generate ats-friendly resume in html.
@@ -228,15 +226,20 @@ generate ats-friendly resume in html.
 rules:
 - output only json
 - must contain "html"
+- DO NOT include raw input text directly
+- DO NOT include sections like "resume:", "self description:", or "job description:"
+- create a clean professional resume
+- extract and rewrite relevant information only
+- do not copy full paragraphs from input
 
-resume:
-${resume || "Not provided"}
+candidate information:
+${resume || ""}
 
-self description:
-${selfDescription || "Not provided"}
+additional details:
+${selfDescription || ""}
 
-job description:
-${jobDescription}
+target role:
+${jobDescription || ""}
 
 return:
 {
